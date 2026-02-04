@@ -1,65 +1,182 @@
-import Image from "next/image";
+"use client";
+import {useState} from "react";
+import Input from "@/components/input";
 
-export default function Home() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+type Outcome =
+    | "Not Started"
+    | "Dialing"
+    | "Connected"
+    | "Voicemail"
+    | "No Answer"
+    | "Qualified";
+
+export default function Page() {
+    const [loading, setLoading] = useState(false);
+    const [session, setSession] = useState<any>(null);
+
+    async function startCall(e: React.FormEvent<HTMLFormElement>) {
+        e.preventDefault();
+        setLoading(true);
+
+        const form = new FormData(e.currentTarget);
+
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/sessions`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                prospect_name: form.get("name"),
+                company: form.get("company"),
+                signal: form.get("signal"),
+                context: form.get("context"),
+                phone_number: form.get("phone"),
+            }),
+        });
+
+        setSession(await res.json());
+        setLoading(false);
+    }
+
+    const intentLabel = mapIntent(session?.intent_score);
+    const outcome = mapOutcome(session?.status);
+    const nextStep = generateNextStep(intentLabel, outcome);
+
+    return (
+        <>
+            <header className="space-y-1">
+                <h1 className="text-3xl font-semibold tracking-tight">Relay by Valley</h1>
+                <p className="text-neutral-400">
+                    {/*Turn signals into real-time qualification.*/}
+                    your AI SDR that turns LinkedIn intent signals into real-time sales calls.
+                </p>
+            </header>
+
+            <section className="grid lg:grid-cols-2 gap-10">
+
+                {/* Input */}
+                <form
+                    onSubmit={startCall}
+                    className=" backdrop-blur border border-neutral-800 rounded-xl p-6 space-y-4"
+                >
+
+                    <div className="text-neutral-400 space-y-2 rounded-xl font-bold text-lg-">
+                        Initiate a call:
+                    </div>
+
+                    <Input name="name" label="Prospect name"/>
+                    <Input name="company" label="Company"/>
+                    <Input name="signal" label="Signal"/>
+                    <Input name="context" label="Context"/>
+                    <Input name="phone" label="Phone number"/>
+
+                    <button
+                        disabled={loading}
+                        className="w-full mt-4 py-3 rounded-lg font-medium
+               text-white
+              disabled:opacity-50 bg-black hover:bg-gray-900 cursor-pointer
+            "
+                    >
+                        {loading ? "Calling…" : "Start Call"}
+                    </button>
+                </form>
+
+                {/* Output */}
+                <div className="bg-neutral-100 backdrop-blur border border-neutral-800 rounded-xl p-6 space-y-8">
+
+                    <div className="text-neutral-400 space-y-2 rounded-xl font-bold text-lg-">
+                        Prospect Qualification:
+                    </div>
+
+                    {/* Status + Intent */}
+
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-xs uppercase tracking-wide text-neutral-800">
+                                Outcome
+                            </p>
+                            <p className="text-sm mt-1">{outcome}</p>
+                        </div>
+
+                        {session?.intent_score !== undefined && (
+                            <div className="px-3 py-1 rounded-full bg-white/10 text-sm">
+                                {intentLabel} ({session.intent_score})
+                            </div>
+                        )}
+                    </div>
+
+                    <Divider/>
+
+                    <Section title="Conversation">
+            <pre className="text-sm text-neutral-800 whitespace-pre-wrap leading-relaxed">
+              {session?.transcript || "Waiting for call…"}
+            </pre>
+                    </Section>
+
+                    <Divider/>
+
+                    <Section title="Qualification Summary">
+                        <p className="text-neutral-800 leading-relaxed">
+                            {session?.summary || "—"}
+                        </p>
+                    </Section>
+
+                    <Divider/>
+
+                    <Section title="Next Step">
+                        <p className="text-neutral-800 leading-relaxed">
+                            {nextStep}
+                        </p>
+                    </Section>
+
+                </div>
+            </section>
+        </>
+    );
+}
+
+
+function mapIntent(score?: number) {
+    if (score === undefined) return "—";
+    if (score >= 70) return "Hot";
+    if (score >= 40) return "Warm";
+    return "Cold";
+}
+
+function mapOutcome(status?: string): Outcome {
+    switch (status) {
+        case "connected":
+            return "Connected";
+        case "voicemail":
+            return "Voicemail";
+        case "no_answer":
+            return "No Answer";
+        case "qualified":
+            return "Qualified";
+        case "dialing":
+            return "Dialing";
+        default:
+            return "Not Started";
+    }
+}
+
+function generateNextStep(intent: string, outcome: Outcome) {
+    if (outcome === "Qualified") return "Schedule demo with AE";
+    if (intent === "Hot") return "Follow up within 24 hours";
+    if (intent === "Warm") return "Send personalized LinkedIn message";
+    if (intent === "Cold") return "Add to nurture sequence";
+    return "Await call completion";
+}
+
+function Section({title, children}: any) {
+    return (
+        <div className="space-y-2">
+            <p className="text-xs uppercase tracking-wide text-neutral-400">
+                {title}
+            </p>
+            {children}
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+    );
+}
+
+function Divider() {
+    return <div className="h-px bg-neutral-800"/>;
 }

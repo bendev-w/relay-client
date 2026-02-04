@@ -1,0 +1,66 @@
+/*@tailwind base;*/
+@tailwind utilities;
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    background: white;
+    color: black;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Ubuntu, sans-serif;
+}
+
+/* Force all surfaces white */
+main,
+section,
+form,
+div {
+    background-color: transparent;
+}
+
+/* Inputs */
+input,
+textarea,
+select {
+    background: white !important;
+    color: black !important;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: black;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.12);
+}
+
+/* Autofill */
+input:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 1000px white inset;
+    -webkit-text-fill-color: black;
+}
+
+/* Buttons */
+button {
+    background: black;
+    color: white;
+}
+
+/* Labels */
+label {
+    font-size: 0.75rem;
+    color: #374151;
+}
+
+/* Panels */
+.panel {
+    background: white;
+    border: 1px solid black;
+    border-radius: 8px;
+    padding: 1rem;
+}
